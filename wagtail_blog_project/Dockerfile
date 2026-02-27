@@ -4,7 +4,7 @@ FROM python:3.12-slim-bookworm
 # Create user
 RUN useradd wagtail
 
-# Set environment variables
+# Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PORT=8080
 
@@ -23,22 +23,19 @@ RUN apt-get update --yes --quiet && apt-get install --yes --quiet --no-install-r
 
 # Install Python dependencies
 COPY requirements.txt /app/
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt gunicorn
 
-# Install gunicorn
-RUN pip install gunicorn
-
-# Copy project code
+# Copy project
 COPY . /app/
 
 # Set ownership
 RUN chown -R wagtail:wagtail /app
 
-# Switch to wagtail user
+# Switch user
 USER wagtail
 
-# Collect static files
+# Collect static
 RUN python manage.py collectstatic --noinput --clear
 
-# Run migrations + start server (Cloud Run compatible)
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"]
+# Start app (Cloud Run FIXED)
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "8", "--timeout", "0"]
